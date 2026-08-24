@@ -1,0 +1,26 @@
+name: Sync dashboard from Dropbox
+on:
+  schedule:
+    - cron: '0 * * * *'
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Fetch dashboard from Dropbox
+        run: |
+          curl -sL -o /tmp/index.html "https://www.dropbox.com/scl/fi/lx2htsmdjj8eok1kmr3op/index.html?rlkey=k3coo25b15t85lvs8dtzo9roj&dl=1"
+          test "$(stat -c%s /tmp/index.html)" -gt 100000
+          grep -q Ironhead /tmp/index.html
+          mv /tmp/index.html index.html
+      - name: Commit if changed
+        run: |
+          if git diff --quiet -- index.html; then echo "No change"; exit 0; fi
+          git config user.name dashboard-sync
+          git config user.email actions@users.noreply.github.com
+          git add index.html
+          git commit -m "Auto-sync dashboard from Dropbox"
+          git push
